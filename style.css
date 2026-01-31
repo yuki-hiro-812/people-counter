@@ -1,141 +1,225 @@
-:root {
-    --start-color: #e53935;
-    --stop-color: #1e88e5;
-    --disabled-color: #bdbdbd;
-    --border-color-analyzing: #e53935;
-    --border-color-default: #ccc;
-    --font-color: #333;
-    --bg-color: #f5f5f5;
+:root{
+  --start-color: #4CAF50;
+  --stop-color: #e53935;
+  --reserve-color: #1976D2;
+  --disabled-color: #bdbdbd;
+  --border-color-analyzing: #e53935;
+  --border-color-default: #ccc;
+  --font-color: #333;
+  --bg: #f4f6f8;
+  --panel-bg: #ffffff;
+  --panel-shadow: 0 2px 5px rgba(0,0,0,0.08);
+  --border-light: #e0e0e0;
+  --active-tab-color: #1976D2;
+  --clr-car:#1e88e5; --clr-bus:#43a047; --clr-truck:#fb8c00;
+  --clr-motorcycle:#8e24aa; --clr-bicycle:#fdd835; --clr-person:#e53935;
+}
+*{ box-sizing: border-box; }
+html{ font-size: 15px; }
+body{
+  margin: 0;
+  font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: var(--font-color);
+  background: var(--bg);
+}
+#container{ width: 100%; max-width: 1600px; margin: 0 auto; padding: 0.8rem; }
+#app-header{
+  display: flex; flex-direction: column; align-items: center;
+  margin-bottom: 1rem; text-align: center;
+}
+#app-title{ font-size: 1.5rem; color: #2c3e50; margin: 0 0 0.4rem 0; }
+#status-indicator{
+  display: flex; align-items: center; gap: 8px; font-weight: bold;
+  color: #0056b3; min-width: 280px; transition: opacity 0.5s ease-out;
+}
+#status-indicator.hidden { opacity: 0; }
+#loading-progress{ width: 150px; height: 10px; }
+
+/* ★★★修正箇所：レイアウトの定義★★★ */
+/* デフォルト（モバイル）は縦積み */
+#main-layout{ display: flex; flex-direction: column; gap: 1rem; }
+
+/* ノートパソコン向け3列レイアウト */
+@media (min-width: 1024px) {
+  #main-layout {
+    display: grid;
+    grid-template-columns: 2fr 1.0fr 0.5fr; /* 左・中央・右の列の比率 */
+    grid-template-rows: auto auto 1fr;      /* 中央列の縦積みのための行定義 */
+    grid-template-areas:
+      "video controls settings"
+      "video counts settings"
+      "video logs settings";
+    gap: 0.5rem;
+    height: calc(100vh - 6rem);
+
+    #video-container {
+      aspect-ratio: unset;   /* デフォルトのアスペクト比指定を解除（PC表示は従来どおり） */
+      flex-grow: 1;
+      min-height: 0;
+    }
+  }
+  /* 各要素をグリッドの所定の位置に配置 */
+  #video-container { grid-area: video; }
+  .panel-group { grid-area: controls; }
+  #realtime-stats { grid-area: counts; }
+  #info-panel { grid-area: logs; }
+  #settings-panel { grid-area: settings; }
+
+  /* 設定パネル内の項目を縦1列に変更 */
+  #settings-panel .settings-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
-body {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    background-color: var(--bg-color);
-    color: var(--font-color);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    -webkit-tap-highlight-color: transparent;
+/* 映像 */
+#video-container{
+  position: relative; width: 100%; background: #000;
+  border-radius: 8px; overflow: hidden; box-shadow: var(--panel-shadow);
+  aspect-ratio: 16 / 9; /* デフォルトは横長 */
+}
+#video, #canvas{
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;
+}
+#canvas{
+  border: 2px solid var(--border-color-default);
+  border-radius: 8px; transition: border-color .3s ease;
+}
+#canvas.analyzing{ border-color: var(--border-color-analyzing); }
+
+/* リアルタイム統計 */
+#realtime-stats {
+  background: var(--panel-bg); padding: 0.8rem; border-radius: 8px;
+  box-shadow: var(--panel-shadow); border: 1px solid var(--border-light);
+}
+#realtime-stats h2{ margin: 0 0 0.6rem; font-size: 1rem; }
+.counts{ display: grid; gap: 0.4rem; grid-template-columns: repeat(3, 1fr); }
+.count-item{
+  background: #fafafa; border: 1px solid var(--border-light);
+  border-left-width: 5px; border-left-style: solid;
+  border-radius: 4px; padding: 0.4rem; font-size: 0.8rem;
+}
+.count-item.car{ border-left-color:var(--clr-car); }
+.count-item.bus{ border-left-color:var(--clr-bus); }
+.count-item.truck{ border-left-color:var(--clr-truck); }
+.count-item.motorcycle{ border-left-color:var(--clr-motorcycle); }
+.count-item.bicycle{ border-left-color:var(--clr-bicycle); }
+.count-item.person{ border-left-color:var(--clr-person); }
+
+/* パネル共通 */
+.panel{
+  background: var(--panel-bg); padding: 0.8rem; border-radius: 8px;
+  box-shadow: var(--panel-shadow); border: 1px solid var(--border-light);
+}
+.panel h3 {
+  margin: 0 0 0.6rem; font-size: 1rem; font-weight: bold;
+  border-bottom: 1px solid var(--border-light); padding-bottom: 0.4rem;
 }
 
-#container {
-    width: 100%;
-    max-width: 500px;
-    padding: 16px;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+/* 設定パネル：タイトル右側のインフォマーク */
+#settings-panel .panel-title-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin: 0 0 0.6rem;
+  border-bottom: 1px solid var(--border-light);
+  padding-bottom: 0.4rem;
+}
+#settings-panel .panel-title-row h3{
+  margin: 0;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+#settings-panel .info-btn{
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--border-light);
+  background: #f8f9fa;
+  color: #555;
+  font-weight: bold;
+  font-size: 0.85rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+#settings-panel .info-btn:hover{
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
 }
 
-#status-indicator {
-    text-align: center;
-    font-size: 1em;
-    height: 20px;
-    font-weight: bold;
+/* タブ */
+.panel-group { border-radius: 8px; box-shadow: var(--panel-shadow); overflow: hidden; border: 1px solid var(--border-light); }
+.tabs { display: flex; background-color: #f8f9fa; }
+.tab-link {
+  flex: 1; text-align: center; padding: 0.6rem 1rem; border: none; background: none;
+  cursor: pointer; font-size: 0.9rem; font-weight: 500; color: #555; border-bottom: 2px solid transparent;
 }
-
-#video-container {
-    position: relative;
-    width: 100%;
-    background-color: #000;
+.tab-link.active {
+  color: var(--active-tab-color); border-bottom-color: var(--active-tab-color);
+  font-weight: bold; background-color: var(--panel-bg);
 }
+.tab-content { background-color: var(--panel-bg); }
+.tab-content > .panel { border: none; box-shadow: none; border-radius: 0; }
+.tab-content:not(.active) { display: none; }
 
-#video {
-    display: none;
-}
-
-#canvas {
-    display: block;
-    width: 100%;
-    height: auto;
-    border: 3px solid var(--border-color-default);
-    box-sizing: border-box;
-    transition: border-color 0.3s ease;
-}
-
-#canvas.analyzing {
-    border-color: var(--border-color-analyzing);
-}
-
-#count-display-area {
-    text-align: center;
-}
-
-#count-display-area p {
-    margin: 0;
-    font-size: 1.5em;
-    font-weight: bold;
-}
-
-#person-count {
-    font-size: 1.8em;
-}
-
-#controls {
-    display: flex;
-    justify-content: space-around;
-    gap: 16px;
-}
-
+/* ボタン */
 .btn {
-    flex-grow: 1;
-    padding: 12px 20px;
-    font-size: 1.1em;
-    font-weight: bold;
+  width: 100%; padding: 0.5rem; font-size: 1rem; text-align: center; font-weight: bold;
+  color: #fff; border: none; border-radius: 6px; cursor: pointer; transition: all .2s ease;
+}
+.btn:hover{ transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.btn:active{ transform: translateY(0); }
+.btn:disabled{ background-color: var(--disabled-color); cursor: not-allowed; box-shadow: none; transform: none; }
+.btn-green{ background-color: var(--start-color); }
+.btn-red{ background-color: var(--stop-color); }
+.btn-blue{ background-color: var(--reserve-color); }
+
+/* 入力欄と設定 */
+.schedule-inputs { display: flex; flex-direction: row; gap: 0.6rem; margin-bottom: 0.6rem; }
+.schedule-inputs label { flex: initial; } /* ★追加: ボックスが不必要に伸びるのを防ぐ */
+.settings-grid{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem 0.8rem; }
+.settings-grid label, .schedule-inputs label {
+  display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.8rem; flex: 1;
+}
+input[type="number"], input[type="datetime-local"], select {
+  width: 100%; padding: 0.4rem; border: 1px solid var(--border-light); border-radius: 4px; font-size: 0.85rem;
+}
+
+/* 情報・ログ */
+#info-panel { display: flex; flex-direction: column; }
+.geo{ display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.5rem; font-size: 0.8rem; }
+#log-display{
+  height: 115px;
+  overflow-y: auto;
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+}
+#log-table{ width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+#log-table th{
+  position: sticky; top: 0; background: #f7f7f7; z-index: 1; padding: 5px; border-bottom: 1px solid var(--border-light);
+}
+#log-table td{ border-bottom: 1px solid var(--border-light); padding: 4px; text-align: center; }
+
+/* その他 */
+#toast{
+  position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%);
+  background: rgba(0,0,0,.8); color: #fff; padding: 10px 18px; border-radius: 8px;
+  font-size: 0.9rem; z-index: 1000; opacity: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  transition: opacity .4s, bottom .4s;
+}
+#toast:not(.hidden){ opacity:1; bottom:50px; }
+.hidden{ display:none !important; }
+
+/* ======= ここから：CSSのみでの修正（タッチ端末に限定）======= */
+/* スマホ/タブレットなど「pointerが粗い」端末だけ、端末の向きで比率を切替 */
+@media (pointer: coarse) and (orientation: portrait) {
+  #video-container { aspect-ratio: 9 / 16; }  /* 縦向き → 縦長 */
+}
+@media (pointer: coarse) and (orientation: landscape) {
+  #video-container { aspect-ratio: 16 / 9; }  /* 横向き → 横長 */
+}
+/* ======= ここまで ======= */
     color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background-color 0.3s, transform 0.1s;
-    -webkit-appearance: none;
 }
 
-.btn:disabled {
-    background-color: var(--disabled-color);
-    cursor: not-allowed;
-}
-
-.btn.start {
-    background-color: var(--start-color);
-}
-
-.btn.stop {
-    background-color: var(--stop-color);
-}
-
-.btn:not(:disabled):active {
-    transform: scale(0.97);
-}
-
-#toast {
-    position: fixed;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: rgba(0, 0, 0, 0.7);
-    color: white;
-    padding: 10px 20px;
-    border-radius: 20px;
-    font-size: 0.9em;
-    z-index: 1000;
-    opacity: 0;
-    transition: opacity 0.5s, bottom 0.5s;
-}
-
-#toast:not(.hidden) {
-    opacity: 1;
-    bottom: 50px;
-}
-
-.hidden {
-    display: none;
-}
-
-/* ✅ 追加：CSV出力ボタンだけ緑に */
-#export-csv-btn {
-    background-color: #4caf50;
-    color: white;
-}
