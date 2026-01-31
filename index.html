@@ -1,41 +1,96 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>リアルタイム人数カウンター</title>
-    <link rel="stylesheet" href="style.css">
-
-    <!-- TensorFlow.js関連ライブラリ -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+  <title>リアルタイム交通量調査AI</title>
+  <link rel="stylesheet" href="./style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.2.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+  <script defer src="./script.js"></script>
 </head>
 <body>
-    <div id="container">
-        <div id="status-indicator">
-            <div id="loading-model">モデル読込中...</div>
-            <div id="analyzing-text" class="hidden">解析中...</div>
-        </div>
+  <div id="container">
+    <header id="app-header">
+      <h1 id="app-title">リアルタイム交通量調査AI</h1>
+      <div id="status-indicator">
+        <div id="loading-model">モデル読み込み中..</div>
+        <progress id="loading-progress" max="100" value="0"></progress>
+        <span id="loading-percentage">0%</span>
+      </div>
+    </header>
 
-        <div id="video-container">
-            <video id="video" playsinline muted autoplay hidden></video>
-            <canvas id="canvas"></canvas>
-        </div>
+    <div id="main-layout">
+      <div id="video-container">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="canvas"></canvas>
+      </div>
 
-        <div id="count-display-area">
-            <p>現在の人数: <span id="person-count">0</span>人</p>
-        </div>
+      <div class="panel-group">
+        <nav class="tabs">
+          <button class="tab-link active" data-tab="realtime">即時測定</button>
+          <button class="tab-link" data-tab="schedule">予約測定</button>
+        </nav>
+        <div id="tab-realtime" class="tab-content active"><div class="panel"><button id="toggle-analysis-btn" class="btn btn-green" disabled>開始</button></div></div>
+        <div id="tab-schedule" class="tab-content"><div class="panel">
+            <div class="schedule-inputs"><label>開始日時<input type="datetime-local" id="auto-start-dt"></label><label>終了日時<input type="datetime-local" id="auto-end-dt"></label></div>
+            <button id="reserve-btn" class="btn btn-blue">予約</button>
+        </div></div>
+      </div>
 
-        <div id="controls">
-            <button id="toggle-analysis-btn" class="btn start" disabled>開始</button>
-            <button id="export-csv-btn" class="btn" disabled>CSV出力</button>
+      <section id="realtime-stats">
+        <h2 id="current-hour-title">--時台の交通量</h2>
+        <div class="counts">
+          <div class="count-item car">乗用車：<span id="count-car">0</span>台</div>
+          <div class="count-item bus">バス：<span id="count-bus">0</span>台</div>
+          <div class="count-item truck">トラック：<span id="count-truck">0</span>台</div>
+          <div class="count-item motorcycle">バイク：<span id="count-motorcycle">0</span>台</div>
+          <div class="count-item bicycle">自転車：<span id="count-bicycle">0</span>台</div>
+          <div class="count-item person">歩行者：<span id="count-person">0</span>人</div>
         </div>
+      </section>
+
+      <div class="panel" id="info-panel">
+         <h3>測定ログ</h3>
+         <div class="geo">
+           <span>緯度：<strong id="geo-lat">未取得</strong></span>
+           <span>経度：<strong id="geo-lng">未取得</strong></span>
+         </div>
+         <div id="log-display">
+           <table id="log-table">
+             <thead><tr><th>日時</th><th>乗用車</th><th>バス</th><th>トラック</th><th>バイク</th><th>自転車</th><th>歩行者</th></tr></thead>
+             <tbody id="log-body"></tbody>
+           </table>
+         </div>
+      </div>
+      
+      <div class="panel" id="settings-panel">
+        <div class="panel-title-row">
+          <h3>設定</h3>
+          <button id="settings-info-btn" class="info-btn" type="button" aria-label="設定の説明">i</button>
+        </div>
+        <div class="settings-grid">
+          <label>測定対象
+            <select id="count-mode">
+              <option value="vehicle">車両</option>
+              <option value="pedestrian">歩行者</option>
+            </select>
+          </label>
+          <label>スコア閾値 <input id="score-th" type="number" step="0.05" min="0" max="1" value="0.5"></label>
+          <label>検出FPS上限
+            <select id="max-fps"><option value="30">30</option><option value="15" selected>15</option><option value="12">12</option><option value="10">10</option><option value="8">8</option></select>
+          </label>
+          <label>確定必要フレーム<input id="min-hits" type="number" min="1" max="10" value="3"></label>
+          <label>IoU閾値 <input id="iou-th" type="number" step="0.05" min="0" max="1" value="0.4"></label>
+          <label>見失い許容量<input id="max-lost" type="number" min="5" max="120" value="30"></label>
+          <label>描画ON/OFF
+            <select id="draw-mode"><option value="all" selected>枠+ID+ラベル</option><option value="box">枠のみ</option><option value="off">非表示</option></select>
+          </label>
+        </div>
+      </div>
     </div>
-
-    <div id="toast" class="hidden">CSVファイルを出力しました。</div>
-
-    <script src="script.js"></script>
+  </div>
+  <div id="toast" class="hidden">通知</div>
 </body>
 </html>
